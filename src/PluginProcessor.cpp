@@ -12,8 +12,18 @@ ModularGranularSynthesizer::ModularGranularSynthesizer()
                      #endif
                        ),
         
-        mainProcessor (new juce::AudioProcessorGraph()) // initiate the main AudioProcessorGraph
+        mainProcessor (new juce::AudioProcessorGraph()), // initiate the main AudioProcessorGraph
+        muteInput (new juce::AudioParameterBool ("mute", "Mute Input", true)),
+        processorSlot1 (new juce::AudioParameterChoice ("slot1", "Slot 1", processorChoices, 0)),
+        processorSlot2 (new juce::AudioParameterChoice ("slot2", "Slot 2", processorChoices, 0)),
+        bypassSlot1 (new juce::AudioParameterBool ("bypass1", "Bypass 1", false)),
+        bypassSlot2 (new juce::AudioParameterBool ("bypass2", "Bypass 2", false))
 {
+    addParameter (muteInput);
+    addParameter (processorSlot1);
+    addParameter (processorSlot2);
+    addParameter (bypassSlot1);
+    addParameter (bypassSlot2);
 }
 
 ModularGranularSynthesizer::~ModularGranularSynthesizer()
@@ -127,7 +137,18 @@ void ModularGranularSynthesizer::prepareToPlay (double sampleRate, int samplesPe
         sampleRate,
         samplesPerBlock);
     mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
-    //initialiseGraph();
+    initialiseGraph();
+
+    auto oscillatorNode = mainProcessor->addNode(std::make_unique<OscillatorProcessor>());
+    auto granulatorNode = mainProcessor->addNode(std::make_unique<GranulatorProcessor>());
+
+    mainProcessor->addConnection({ {oscillatorNode->nodeID, 0}, {granulatorNode->nodeID, 0} });
+    mainProcessor->addConnection({ {oscillatorNode->nodeID, 0}, {granulatorNode->nodeID, 1} });
+
+    mainProcessor->addConnection({ {oscillatorNode->nodeID, 0}, {granulatorNode->nodeID, 7} });
+    
+    mainProcessor->addConnection({ {granulatorNode->nodeID, 0}, {audioOutputNode->nodeID, 0} });
+    mainProcessor->addConnection({ {granulatorNode->nodeID, 1}, {audioOutputNode->nodeID, 1} });
 }
 
 void ModularGranularSynthesizer::releaseResources()
@@ -172,6 +193,7 @@ void ModularGranularSynthesizer::processBlock (juce::AudioBuffer<float>& buffer,
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
+
 
     //updateGraph();
     mainProcessor->processBlock (buffer, midiMessages);

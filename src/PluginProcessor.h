@@ -3,7 +3,9 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
-#include "ProcessorBase.h"
+//#include "ProcessorBase.h"
+#include "Granulator.h"
+#include "Oscillator.h"
 
 using AudioGraphIOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
 using Node = juce::AudioProcessorGraph::Node;
@@ -146,27 +148,149 @@ private:
         }
     };
 
-    ////////
+    ////////////////
 
+    juce::StringArray processorChoices { "Empty", "Granulator", "Oscillator"};
+    
     std::unique_ptr<juce::AudioProcessorGraph> mainProcessor;
+
+    juce::AudioParameterBool* muteInput;
+    juce::AudioParameterChoice* processorSlot1;
+    juce::AudioParameterChoice* processorSlot2;
+    juce::AudioParameterBool* bypassSlot1;
+    juce::AudioParameterBool* bypassSlot2;
 
     Node::Ptr audioInputNode;
     Node::Ptr audioOutputNode;
+    Node::Ptr slot1Node;
+    Node::Ptr slot2Node;
 
     void initialiseGraph()
     {
         mainProcessor->clear();
         audioInputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioInputNode));
         audioOutputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioOutputNode));
-        connectAudioNodes();
+        //connectAudioNodes();
     }
 
+#if 1
     void connectAudioNodes()
     {
         for (int channel = 0; channel < 2; ++channel)
             mainProcessor->addConnection ({ { audioInputNode->nodeID, channel },
                 { audioOutputNode->nodeID, channel } });
     }
+
+    void updateGraph()
+    {
+        bool hasChanged = false;
+        juce::Array<juce::AudioParameterChoice*> choices
+        {
+            processorSlot1,
+            processorSlot2
+        };
+
+        juce::Array<juce::AudioParameterBool*> bypasses
+        {
+            bypassSlot1,
+            bypassSlot2
+        };
+
+        juce::ReferenceCountedArray<Node> slots;
+        slots.add (slot1Node);
+        slots.add (slot2Node);
+
+        for (int i = 0; i < 2; ++i)
+        {
+            auto& choice = choices.getReference (i);
+            auto slot = slots.getUnchecked (i);
+            if (choice->getIndex() == 0)
+            {
+                if (slot != nullptr)
+                {
+                    mainProcessor->removeNode (slot.get());
+                    slots.set (i, nullptr);
+                    hasChanged = true;
+                }
+            }
+            else if (choice->getIndex() == 1)
+            {
+                if (slot != nullptr)
+                {
+                    if (slot->getProcessor()->getName() == "Granulator")
+                        continue;
+                    mainProcessor->removeNode (slot.get());
+                }
+                slots.set (i, mainProcessor->addNode (std::make_unique<GranulatorProcessor>()));
+                hasChanged = true;
+            }
+            else if (choice->getIndex() == 2)
+            {
+                if (slot != nullptr)
+                {
+                    if (slot->getProcessor()->getName() == "Oscillator")
+                        continue;
+                    mainProcessor->removeNode (slot.get());
+                }
+                slots.set (i, mainProcessor->addNode (std::make_unique<OscillatorProcessor>()));
+                hasChanged = true;
+            }
+        }
+
+        ////
+        if (hasChanged)
+        {
+            for (auto connection : mainProcessor->getConnections())
+                mainProcessor->removeConnection (connection);
+            juce::ReferenceCountedArray<Node> activeSlots;
+            for (auto slot : slots)
+            {
+                if (slot != nullptr)
+                {
+                    activeSlots.add (slot);
+                    slot->getProcessor()->setPlayConfigDetails (getMainBusNumInputChannels(),
+                        getMainBusNumOutputChannels(),
+                        getSampleRate(),
+                        getBlockSize());
+                }
+            }
+            if (activeSlots.isEmpty())
+            {
+                connectAudioNodes();
+            }
+            else
+            {
+                for (int i = 0; i < activeSlots.size() - 1; ++i)
+                {
+                    for (int channel = 0; channel < 2; ++channel)
+                        mainProcessor->addConnection ({ { activeSlots.getUnchecked (i)->nodeID, channel },
+                            { activeSlots.getUnchecked (i + 1)->nodeID, channel } });
+                }
+                for (int channel = 0; channel < 2; ++channel)
+                {
+                    mainProcessor->addConnection ({ { audioInputNode->nodeID, channel },
+                        { activeSlots.getFirst()->nodeID, channel } });
+                    mainProcessor->addConnection ({ { activeSlots.getLast()->nodeID, channel },
+                        { audioOutputNode->nodeID, channel } });
+                }
+            }
+            for (auto node : mainProcessor->getNodes())
+                node->getProcessor()->enableAllBuses();
+        }
+
+        ////
+        for (int i = 0; i < 2; ++i)
+        {
+            auto slot = slots.getUnchecked (i);
+            auto& bypass = bypasses.getReference (i);
+            if (slot != nullptr)
+                slot->setBypassed (bypass->get());
+        }
+        audioInputNode->setBypassed (muteInput->get());
+        slot1Node = slots.getUnchecked (0);
+        slot2Node = slots.getUnchecked (1);
+    }
+#endif
 
     //==============================================================================
     // JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ModularGranularSynthesizer)
