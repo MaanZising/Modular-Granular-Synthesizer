@@ -88,7 +88,6 @@ void GranulatorProcessor::triggerGrainBuffer (int channel, juce::AudioBuffer<flo
 
     for (int sample = 0; sample < bufferSize; ++sample)
     {
-        DBG (buffer.getReadPointer(2)[sample]);
         // get parameters
 
         // rate, channel 2, (0.0, inf)

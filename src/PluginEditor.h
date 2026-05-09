@@ -1,22 +1,31 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "NodeComponent.h"
 
-//==============================================================================
+struct Connection
+{
+    ConnectorComponent* start;
+    ConnectorComponent* end;
+};
+
 class AudioPluginAudioProcessorEditor final : public juce::AudioProcessorEditor
 {
 public:
     explicit AudioPluginAudioProcessorEditor (ModularGranularSynthesizer&);
     ~AudioPluginAudioProcessorEditor() override;
 
-    //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
-    // This reference is provided as a quick way for your editor to
-    // access the processor object that created it.
     ModularGranularSynthesizer& processorRef;
+
+    juce::OwnedArray<NodeComponent> nodes;
+    std::vector<Connection> connections;
+
+    ConnectorComponent* draggingConnector = nullptr;
+    juce::Point<int> dragPoint;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)
 };
