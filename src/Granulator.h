@@ -14,7 +14,8 @@ private:
     int grainLength { 0 };
     int delayTime { 0 };
     double interval { 0. };
-    double rate { 1. };
+    double rate { 1.0 };
+    double maxDelayTime { 2.0 };
     std::vector<double> spawnPosition;
 
     struct Grain
@@ -82,6 +83,5 @@ private:
     void updateWritePosition (juce::AudioBuffer<float>& buffer);
     void triggerGrainBuffer (int channel, juce::AudioBuffer<float>& buffer);
     void fillDelayBuffer (int channel, juce::AudioBuffer<float>& buffer);
-    void fillGrainBuffer (int channel, juce::AudioBuffer<float>& delayBuffer);
 
 };

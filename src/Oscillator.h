@@ -11,7 +11,10 @@ public:
     void prepareToPlay (double, int) override;
     void processBlock (juce::AudioSampleBuffer&, juce::MidiBuffer&) override;
     const juce::String getName() const override;
+
 private:
+    float freq { 220.0f };
+    int type { 5 };
     juce::dsp::ProcessSpec spec;
 
     juce::dsp::Oscillator<float> osc
@@ -21,14 +24,14 @@ private:
             // sine
             return std::sin(phase);
 
-            // square
-            //return phase < 0.0f ? 1.0f : -1.0f;
+            // triangle
+            //return std::abs (phase) / juce::MathConstants<float>::pi * 2.0f - 1.0f;
 
             // sawtooth
             //return phase / juce::MathConstants<float>::pi;
 
-            // triangle
-            //return std::abs (phase) / juce::MathConstants<float>::pi * 2.0f - 1.0f;
+            // square
+            //return phase < 0.0f ? 1.0f : -1.0f;
         }
     };
 };

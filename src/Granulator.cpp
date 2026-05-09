@@ -4,7 +4,8 @@ GranulatorProcessor::GranulatorProcessor()
         : ProcessorBase
         (
             BusesProperties()
-            .withInput("Input", juce::AudioChannelSet::discreteChannels (8), true)
+            .withInput("Input", juce::AudioChannelSet::stereo(), true)
+            .withInput("Input", juce::AudioChannelSet::discreteChannels (4), true)
             .withOutput("Output", juce::AudioChannelSet::stereo(), true)
         )
 {
@@ -17,17 +18,12 @@ void GranulatorProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     juce::ignoreUnused (sampleRate, samplesPerBlock);
 
     // initialize delay buffer
-    int delayBufferSize { static_cast<int>(sampleRate * 2.0) };
+    int delayBufferSize { static_cast<int>(sampleRate * maxDelayTime) };
     delayBuffer.setSize (getTotalNumInputChannels(), delayBufferSize);
     for (auto channel = 0; channel < getTotalNumOutputChannels(); ++channel)
         delayBuffer.clear (channel, 0, delayBuffer.getNumSamples());
 
-    // initialize grain buffer
-    int grainBufferSize { static_cast<int>(sampleRate * 2.0) };
-    grainBuffer.setSize (getTotalNumInputChannels(), grainBufferSize);
-    for (auto channel = 0; channel < getTotalNumOutputChannels(); ++channel)
-        grainBuffer.clear (channel, 0, grainBuffer.getNumSamples());
-
+    //
     for (auto channel = 0; channel < getTotalNumOutputChannels(); ++channel)
         spawnPosition.push_back (0.);
 
@@ -46,12 +42,9 @@ void GranulatorProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    for (int channel = 0; channel < 2; ++channel)
     {
-        //auto* channelData = buffer.getWritePointer (channel);
-
         fillDelayBuffer (channel, buffer);
-        fillGrainBuffer (channel, delayBuffer);
         triggerGrainBuffer (channel, buffer);
     }
 
@@ -64,39 +57,6 @@ void GranulatorProcessor::updateWritePosition (juce::AudioBuffer<float>& buffer)
     auto delayBufferSize = delayBuffer.getNumSamples();
     delayBufferWritePosition += bufferSize;
     delayBufferWritePosition %= delayBufferSize;
-}
-
-void GranulatorProcessor::triggerGrainBuffer (int channel, juce::AudioBuffer<float>& buffer)
-{
-    auto bufferSize = buffer.getNumSamples();
-    double startPosition = static_cast<double> (delayBufferWritePosition - delayTime);
-    if (startPosition < 0)
-        startPosition += static_cast<double> (delayBuffer.getNumSamples());
-
-    for (int sample = 0; sample < bufferSize; ++sample)
-    {
-        // check if it's time to spawn a new grain
-        if (spawnPosition[channel] >= interval)
-        {
-            //buffer.setSample (channel, sample, 1.0); // click
-            grainPool[grainIndex].initiate (channel, startPosition, rate, grainLength); // spawn a new grain
-            grainIndex = (grainIndex + 1) % numGrain;
-            while (spawnPosition[channel] > 0.)
-                spawnPosition[channel] -= interval; // reset timer
-        }
-
-        float outputSample { 0.f };
-
-        // sum all active grains
-        for (auto& grain : grainPool)
-        {
-            if (grain.active and grain.currentChannel == channel)
-                outputSample += grain.getNextSample (channel, delayBuffer);
-        }
-        buffer.setSample (channel, sample, outputSample);
-
-        ++spawnPosition[channel];
-    }
 }
 
 void GranulatorProcessor::fillDelayBuffer (int channel, juce::AudioBuffer<float>& buffer)
@@ -121,26 +81,68 @@ void GranulatorProcessor::fillDelayBuffer (int channel, juce::AudioBuffer<float>
     }
 }
 
-void GranulatorProcessor::fillGrainBuffer (int channel, juce::AudioBuffer<float>& delayBuffer)
+void GranulatorProcessor::triggerGrainBuffer (int channel, juce::AudioBuffer<float>& buffer)
 {
-    auto delayBufferSize = delayBuffer.getNumSamples();
-    auto delayBufferReadPosition = delayBufferWritePosition - delayTime; // grain start position updates at control rate
+    auto bufferSize = buffer.getNumSamples();
+    auto sampleRate = getSampleRate();
 
-    if (delayBufferReadPosition < 0)
+    for (int sample = 0; sample < bufferSize; ++sample)
     {
-        delayBufferReadPosition += delayBufferSize;
-    }
-    auto delayBufferNumFramesToEnd = delayBufferSize - delayBufferReadPosition;
+        DBG (buffer.getReadPointer(2)[sample]);
+        // get parameters
 
-    if (grainLength > delayBufferNumFramesToEnd)
-    {
-        auto delayBufferNumFramesAtStart = grainLength - delayBufferNumFramesToEnd;
-        grainBuffer.copyFrom (channel, 0, delayBuffer, channel, delayBufferReadPosition, delayBufferNumFramesToEnd);
-        grainBuffer.copyFrom (channel, delayBufferNumFramesToEnd, delayBuffer, channel, 0, delayBufferNumFramesAtStart);
-    }
-    else
-    {
-        grainBuffer.copyFrom (channel, 0, delayBuffer, channel, delayBufferReadPosition, grainLength);
+        // rate, channel 2, (0.0, inf)
+        rate = buffer.getReadPointer(2)[sample];
+        if (rate < 0.0)
+            rate = 0.0;
+
+        rate = 1.0;
+
+        // delay time, channel 3, (0.001, maximum delay time)
+        delayTime = static_cast<int> (buffer.getReadPointer(3)[sample] * sampleRate);
+        if (delayTime >= static_cast<int> (sampleRate * maxDelayTime))
+            delayTime = static_cast<int> (sampleRate * maxDelayTime) - 1;
+        if (delayTime < static_cast<int> (0.001 * sampleRate))
+            delayTime = static_cast<int> (0.001 * sampleRate);
+
+        // grain length, channel 4, (0.001, delay time)
+        grainLength = static_cast<int> (buffer.getReadPointer(4)[sample] * sampleRate);
+        if (grainLength > delayTime)
+            grainLength = delayTime;
+        if (grainLength < static_cast<int> (0.001 * sampleRate))
+            grainLength = static_cast<int> (0.001 * sampleRate);
+
+        // interval, channel 5, (0.001, inf)
+        interval = buffer.getReadPointer(5)[sample];
+        if (interval < 0.001)
+            interval = 0.001;
+        interval = interval * sampleRate;
+
+        double startPosition = static_cast<double> (delayBufferWritePosition - delayTime);
+        if (startPosition < 0)
+            startPosition += static_cast<double> (delayBuffer.getNumSamples());
+
+        // check if it's time to spawn a new grain
+        if (spawnPosition[channel] >= interval)
+        {
+            //buffer.setSample (channel, sample, 1.0); // click
+            grainPool[grainIndex].initiate (channel, startPosition, rate, grainLength); // spawn a new grain
+            grainIndex = (grainIndex + 1) % numGrain;
+            while (spawnPosition[channel] > 0.)
+                spawnPosition[channel] -= interval; // reset timer
+        }
+
+        float outputSample { 0.f };
+
+        // sum all active grains
+        for (auto& grain : grainPool)
+        {
+            if (grain.active and grain.currentChannel == channel)
+                outputSample += grain.getNextSample (channel, delayBuffer);
+        }
+        buffer.setSample (channel, sample, outputSample);
+
+        ++spawnPosition[channel];
     }
 }
 
