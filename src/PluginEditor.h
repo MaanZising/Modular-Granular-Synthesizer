@@ -27,6 +27,7 @@ public:
     void saveToFile(const juce::File& file);
     void loadFromFile(const juce::File& file);
     void updateNodePosition(NodeComponent* node);
+    void childBoundsChanged(Component* child);
 
 private:
     ModularGranularSynthesizer& processorRef;

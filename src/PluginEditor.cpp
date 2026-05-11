@@ -374,3 +374,9 @@ void AudioPluginAudioProcessorEditor::updateNodePosition(NodeComponent* node)
         }
     }
 }
+
+void AudioPluginAudioProcessorEditor::childBoundsChanged(Component* child)
+{
+    if (auto* node = dynamic_cast<NodeComponent*>(child))
+        updateNodePosition(node);
+}

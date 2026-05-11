@@ -4,33 +4,16 @@
 #include "ConnectorComponent.h"
 
 class ConnectorComponent;
+class AudioPluginAudioProcessorEditor;
 
 class NodeComponent : public juce::Component
 {
 public:
     NodeComponent(const juce::String& name, int numInputs, int numOutputs);
 
-    void resized() override
-    {
-        // layout inputs on left edge
-        int spacing = getHeight() / (inputs.size() + 1);
-        for (int i = 0; i < inputs.size(); ++i)
-            inputs[i]->setBounds(-5, spacing * (i+1) - 5, 12, 10);
+    void resized() override;
 
-        // layout outputs on right edge
-        spacing = getHeight() / (outputs.size() + 1);
-        for (int i = 0; i < outputs.size(); ++i)
-            outputs[i]->setBounds(getWidth()-7, spacing * (i+1) - 5, 12, 10);
-    }
-
-    void paint(juce::Graphics& g) override
-    {
-        g.setColour (darkGrey);
-        g.fillRoundedRectangle (getLocalBounds().toFloat(), 5.0f);
-
-        g.setColour (juce::Colours::white);
-        g.drawText (nodeName, getLocalBounds(), juce::Justification::centred);
-    }
+    void paint(juce::Graphics& g) override;
 
     void mouseDown(const juce::MouseEvent& e) override
     {
