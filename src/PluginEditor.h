@@ -6,8 +6,8 @@
 
 struct Connection
 {
-    ConnectorComponent* start;
-    ConnectorComponent* end;
+    juce::Component::SafePointer<ConnectorComponent> start;
+    juce::Component::SafePointer<ConnectorComponent> end;
 };
 
 class AudioPluginAudioProcessorEditor final : public juce::AudioProcessorEditor

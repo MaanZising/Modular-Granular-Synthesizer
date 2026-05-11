@@ -72,14 +72,17 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 
     for (auto& c : connections)
     {
-        auto start = c.start->getBounds().getCentre() + c.start->getParentComponent()->getPosition();
-        auto end = c.end->getBounds().getCentre() + c.end->getParentComponent()->getPosition();
+        if (c.start != nullptr && c.end != nullptr)
+        {
+            auto start = c.start->getBounds().getCentre() + c.start->getParentComponent()->getPosition();
+            auto end = c.end->getBounds().getCentre() + c.end->getParentComponent()->getPosition();
 
-        g.drawLine(
-            (float)start.x, (float)start.y,
-            (float)end.x,   (float)end.y,
-            2.0f
-        );
+            g.drawLine(
+                (float)start.x, (float)start.y,
+                (float)end.x,   (float)end.y,
+                2.0f
+            );
+        }
     }
 
     // Draw temporary line while dragging
@@ -274,6 +277,17 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
                         {
                             if (port->getType() == ConnectorType::Input)
                             {
+                                // duplicate check
+                                bool connectionExists = std::any_of(connections.begin(), connections.end(),
+                                    [c, port](const Connection& existing) {
+                                        return existing.start == c && existing.end == port;
+                                    });
+                                if (connectionExists)
+                                {
+                                    DBG("Connection already exists!");
+                                    break; 
+                                }
+                                
                                 connections.push_back({ c, port });
                                 DBG ("connected");
 
@@ -283,7 +297,9 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
                                 connTree.setProperty("sourcePort", c->getIndex(), nullptr);
                                 connTree.setProperty("destId", port->getParentNode()->getUniqueId(), nullptr);
                                 connTree.setProperty("destPort", port->getIndex(), nullptr);
-                                processorRef.graphState.getChildWithName("Connections").addChild(connTree, -1, nullptr);
+                                
+                                auto connsTree = processorRef.graphState.getOrCreateChildWithName("Connections", nullptr);
+                                connsTree.addChild(connTree, -1, nullptr);
 
                                 break;
                             }

@@ -53,7 +53,6 @@ public:
 
     //==============================================================================
     juce::ValueTree graphState { "Graph" };
-    juce::ValueTree connectionsState { "Connections" };
     juce::int64 nextNodeId { 1 }; // start IDs at 1
     juce::int64 generateNodeId()
     {

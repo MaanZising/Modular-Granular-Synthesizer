@@ -13,7 +13,6 @@ ModularGranularSynthesizer::ModularGranularSynthesizer()
                        ),
         mainProcessor (new juce::AudioProcessorGraph()) // initiate the main AudioProcessorGraph
 {
-    graphState.addChild(connectionsState, -1, nullptr);
 }
 
 ModularGranularSynthesizer::~ModularGranularSynthesizer()
