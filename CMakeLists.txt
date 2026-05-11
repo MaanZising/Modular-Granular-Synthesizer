@@ -74,7 +74,8 @@ target_sources(AudioPluginExample
         src/ProcessorBase.cpp
         src/Granulator.cpp
         src/Oscillator.cpp
-        src/NodeComponent.cpp)
+        src/NodeComponent.cpp
+        src/ConnectorComponent.cpp)
 
 # `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
 # project, these might be passed in the 'Preprocessor Definitions' field. JUCE modules also make use

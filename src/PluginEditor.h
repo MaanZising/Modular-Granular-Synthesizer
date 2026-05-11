@@ -23,9 +23,11 @@ public:
     void hookUpNode (NodeComponent* node);
     
     // persist
+#if 0
     juce::var serializeGraph();
     void saveToFile(const juce::File& file);
     void loadFromFile(const juce::File& file);
+#endif
     void updateNodePosition(NodeComponent* node);
     void childBoundsChanged(Component* child);
 

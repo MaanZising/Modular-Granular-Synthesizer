@@ -95,6 +95,7 @@ void ModularGranularSynthesizer::prepareToPlay (double sampleRate, int samplesPe
     mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
     initialiseGraph();
 
+#if 0
     std::vector<Node::Ptr> node(2);
     for (long unsigned int i = 0; i < 2; ++i)
         node[i] = mainProcessor->addNode (std::make_unique<OscillatorProcessor>());
@@ -109,6 +110,7 @@ void ModularGranularSynthesizer::prepareToPlay (double sampleRate, int samplesPe
     mainProcessor->addConnection ({ {audioInputNode->nodeID, 1}, {granulatorNode->nodeID, 1} });
     //mainProcessor->addConnection ({ {granulatorNode->nodeID, 0}, {audioOutputNode->nodeID, 0} });
     //mainProcessor->addConnection ({ {granulatorNode->nodeID, 1}, {audioOutputNode->nodeID, 1} });
+#endif
 }
 
 void ModularGranularSynthesizer::releaseResources()

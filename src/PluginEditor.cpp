@@ -6,7 +6,7 @@
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (ModularGranularSynthesizer& p)
     : AudioProcessorEditor (&p), processorRef (p)
 {
-    juce::ignoreUnused (processorRef);
+    //juce::ignoreUnused (processorRef);
     setSize (800, 600);
     setResizable (true, true);
 
@@ -164,7 +164,7 @@ void AudioPluginAudioProcessorEditor::addNode(const juce::String& name, int numI
 
 void AudioPluginAudioProcessorEditor::removeNode(NodeComponent* node)
 {
-    // Remove connections involving this node's ports
+    // remove connections involving this node's ports
     connections.erase(
         std::remove_if(connections.begin(), connections.end(),
                        [node](const Connection& c)
@@ -174,9 +174,32 @@ void AudioPluginAudioProcessorEditor::removeNode(NodeComponent* node)
                        }),
         connections.end());
 
-    // Remove from OwnedArray (this deletes the node automatically)
+    // remove all connections involving this node
+    auto connsTree = processorRef.graphState.getChildWithName("Connections");
+    for (int i = connsTree.getNumChildren(); --i >= 0; )
+    {
+        auto child = connsTree.getChild(i);
+        if ((juce::int64)child["sourceId"] == node->getUniqueId() ||
+            (juce::int64)child["destId"] == node->getUniqueId())
+        {
+            connsTree.removeChild(i, nullptr);
+        }
+    }
+
+    // remove node from OwnedArray (this deletes the node automatically)
     nodes.removeObject(node);
     repaint();
+
+    // remove node from processor state
+    for (int i = 0; i < processorRef.graphState.getNumChildren(); ++i)
+    {
+        auto child = processorRef.graphState.getChild(i);
+        if ((juce::int64)child["id"] == node->getUniqueId())
+        {
+            processorRef.graphState.removeChild(child, nullptr);
+            break;
+        }
+    }
 }
 
 void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
@@ -199,6 +222,7 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
             juce::PopupMenu menu;
             menu.addItem(1, "Add Node A");
             menu.addItem(2, "Add Node B");
+            menu.addItem(3, "Granulator");
 
             menu.showMenuAsync
             (
@@ -216,6 +240,10 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
                         break;
                     case 2:
                         addNode ("Node B", 2, 1, juce::Rectangle<int>(pos.x, pos.y, 80, 50));
+                        break;
+                    case 3:
+                        addNode ("Granulator", 6, 2, juce::Rectangle<int>(pos.x, pos.y, 80, 100));
+                        break;
                     }
                 }
             );
@@ -295,6 +323,7 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
 
 //////////////////////////////////////////////////////////////////
 
+#if 0
 juce::var AudioPluginAudioProcessorEditor::serializeGraph()
 {
     juce::Array<juce::var> nodeArray;
@@ -388,6 +417,7 @@ void AudioPluginAudioProcessorEditor::loadFromFile(const juce::File& file)
 
     repaint();
 }
+#endif
 
 NodeComponent* AudioPluginAudioProcessorEditor::findNodeById(juce::int64 id)
 {
