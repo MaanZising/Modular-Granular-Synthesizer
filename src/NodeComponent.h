@@ -46,6 +46,16 @@ public:
         }
     }
 
+    ConnectorComponent* getInputPort(int index)
+    {
+        return (index >= 0 && index < inputs.size()) ? inputs[index] : nullptr;
+    }
+
+    ConnectorComponent* getOutputPort(int index)
+    {
+        return (index >= 0 && index < outputs.size()) ? outputs[index] : nullptr;
+    }
+
     juce::int64 getUniqueId() const { return uniqueId; }
 
     void setUniqueId(juce::int64 id) { uniqueId = id; }

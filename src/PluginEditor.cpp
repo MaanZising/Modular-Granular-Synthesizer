@@ -38,6 +38,24 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (ModularGranula
         node->setBounds(bounds);
         hookUpNode(node);
     }
+
+    // load connections
+    auto connsTree = processorRef.graphState.getChildWithName("Connections");
+    for (int i = 0; i < connsTree.getNumChildren(); ++i)
+    {
+        auto child = connsTree.getChild(i);
+
+        auto* sourceNode = findNodeById((juce::int64)child["sourceId"]);
+        auto* destNode   = findNodeById((juce::int64)child["destId"]);
+
+        if (sourceNode && destNode)
+        {
+            auto* sourcePort = sourceNode->getOutputPort((int)child["sourcePort"]);
+            auto* destPort   = destNode->getInputPort((int)child["destPort"]);
+
+            connections.push_back({ sourcePort, destPort });
+        }
+    }
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
@@ -84,6 +102,7 @@ void AudioPluginAudioProcessorEditor::resized()
 
 void AudioPluginAudioProcessorEditor::removeConnection (ConnectorComponent* p)
 {
+    // remove from local vector
     connections.erase
     (
         std::remove_if
@@ -102,6 +121,20 @@ void AudioPluginAudioProcessorEditor::removeConnection (ConnectorComponent* p)
         ),
         connections.end()
     );
+
+    // remove from processor state
+    auto connsTree = processorRef.graphState.getChildWithName("Connections");
+    for (int i = 0; i < connsTree.getNumChildren(); ++i)
+    {
+        auto child = connsTree.getChild(i);
+        if ((juce::int64)child["sourceId"] == p->getParentNode()->getUniqueId() ||
+            (juce::int64)child["destId"] == p->getParentNode()->getUniqueId())
+        {
+            connsTree.removeChild(i, nullptr);
+            break;
+        }
+    }
+
     repaint();
 }
 
@@ -215,6 +248,15 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
                             {
                                 connections.push_back({ c, port });
                                 DBG ("connected");
+
+                                // persist to processor state
+                                juce::ValueTree connTree("Connection");
+                                connTree.setProperty("sourceId", c->getParentNode()->getUniqueId(), nullptr);
+                                connTree.setProperty("sourcePort", c->getIndex(), nullptr);
+                                connTree.setProperty("destId", port->getParentNode()->getUniqueId(), nullptr);
+                                connTree.setProperty("destPort", port->getIndex(), nullptr);
+                                processorRef.graphState.getChildWithName("Connections").addChild(connTree, -1, nullptr);
+
                                 break;
                             }
                         }
