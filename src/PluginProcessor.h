@@ -51,6 +51,14 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    //==============================================================================
+    juce::ValueTree graphState { "Graph" };
+    juce::int64 nextNodeId { 1 }; // start IDs at 1
+    juce::int64 generateNodeId()
+    {
+        return nextNodeId++;
+    }
+
 private:
     ////////////////
     std::unique_ptr<juce::AudioProcessorGraph> mainProcessor;

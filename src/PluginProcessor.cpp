@@ -174,6 +174,7 @@ void ModularGranularSynthesizer::getStateInformation (juce::MemoryBlock& destDat
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
     juce::ignoreUnused (destData);
+    juce::MemoryOutputStream(destData, true).writeString(graphState.toXmlString());
 }
 
 void ModularGranularSynthesizer::setStateInformation (const void* data, int sizeInBytes)
@@ -181,6 +182,9 @@ void ModularGranularSynthesizer::setStateInformation (const void* data, int size
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused (data, sizeInBytes);
+    auto xml = juce::parseXML(juce::String::fromUTF8((const char*)data, sizeInBytes));
+        if (xml != nullptr)
+            graphState = juce::ValueTree::fromXml(*xml);
 }
 
 //==============================================================================
