@@ -21,6 +21,10 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (ModularGranula
     {
         auto nodeTree = graph.getChild(i);
 
+        // only process children that are actually Nodes
+        if (!nodeTree.hasType("Node"))
+            continue;
+        
         juce::Rectangle<int> bounds(nodeTree["x"], nodeTree["y"], nodeTree["w"], nodeTree["h"]);
 
         auto* node = new NodeComponent(nodeTree["name"].toString(),
@@ -167,6 +171,11 @@ void AudioPluginAudioProcessorEditor::addNode(const juce::String& name, int numI
 
 void AudioPluginAudioProcessorEditor::removeNode(NodeComponent* node)
 {
+    if (node == nullptr) return;
+
+    // capture the id before the node is deleted
+    const auto idToRemove = node->getUniqueId();
+    
     // remove connections involving this node's ports
     connections.erase(
         std::remove_if(connections.begin(), connections.end(),
@@ -189,27 +198,27 @@ void AudioPluginAudioProcessorEditor::removeNode(NodeComponent* node)
         }
     }
 
-    // remove node from OwnedArray (this deletes the node automatically)
-    nodes.removeObject(node);
-    repaint();
-
     // remove node from processor state
-    for (int i = 0; i < processorRef.graphState.getNumChildren(); ++i)
+    for (int i = processorRef.graphState.getNumChildren(); --i >= 0;)
     {
         auto child = processorRef.graphState.getChild(i);
-        if ((juce::int64)child["id"] == node->getUniqueId())
+        if (child.hasType("Node") && (juce::int64)child["id"] == idToRemove)
         {
             processorRef.graphState.removeChild(child, nullptr);
             break;
         }
     }
+
+    // remove node from OwnedArray (this deletes the node automatically)
+    nodes.removeObject(node);
+    repaint();
 }
 
 void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
 {
     if (e.mods.isRightButtonDown())
     {
-        // Check if click was on empty canvas (not on a node)
+        // check if click was on empty canvas (not on a node)
         bool clickedOnNode = false;
         for (auto* node : nodes)
         {
@@ -266,47 +275,64 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
         }
         else // finished
         {
-            // only allow output to input connections
-            if (c->getType() == ConnectorType::Output)
+            ConnectorComponent* sourcePort = nullptr;
+            ConnectorComponent* destPort = nullptr;
+
+            // search all nodes for a valid target port at the mouse position
+            for (auto* otherNode : nodes)
             {
-                for (auto* otherNode : nodes)
+                // look for input when dragging output, look for output when dragging input
+                auto& targetPorts = (c->getType() == ConnectorType::Output) ? otherNode->inputs : otherNode->outputs;
+
+                for (auto* target : targetPorts)
                 {
-                    for (auto* port : otherNode->inputs)
+                    if (target->getBounds().contains(e.getEventRelativeTo(otherNode).getPosition()))
                     {
-                        if (port != c && port->getBounds().contains(e.getEventRelativeTo(otherNode).getPosition()))
+                        // implement directionality
+                        if (c->getType() == ConnectorType::Output)
                         {
-                            if (port->getType() == ConnectorType::Input)
-                            {
-                                // duplicate check
-                                bool connectionExists = std::any_of(connections.begin(), connections.end(),
-                                    [c, port](const Connection& existing) {
-                                        return existing.start == c && existing.end == port;
-                                    });
-                                if (connectionExists)
-                                {
-                                    DBG("Connection already exists!");
-                                    break; 
-                                }
-                                
-                                connections.push_back({ c, port });
-                                DBG ("connected");
-
-                                // persist to processor state
-                                juce::ValueTree connTree("Connection");
-                                connTree.setProperty("sourceId", c->getParentNode()->getUniqueId(), nullptr);
-                                connTree.setProperty("sourcePort", c->getIndex(), nullptr);
-                                connTree.setProperty("destId", port->getParentNode()->getUniqueId(), nullptr);
-                                connTree.setProperty("destPort", port->getIndex(), nullptr);
-                                
-                                auto connsTree = processorRef.graphState.getOrCreateChildWithName("Connections", nullptr);
-                                connsTree.addChild(connTree, -1, nullptr);
-
-                                break;
-                            }
+                            sourcePort = c;
+                            destPort = target;
                         }
+                        else
+                        {
+                            sourcePort = target;
+                            destPort = c;
+                        }
+                        break;
                     }
                 }
+                if (destPort != nullptr) break;
             }
+
+            // create the connection if a valid pair was found 
+            if (sourcePort != nullptr && destPort != nullptr)
+            {
+                // prevent duplicate connections
+                bool exists = std::any_of(connections.begin(), connections.end(),
+                    [sourcePort, destPort](const Connection& conn) {
+                        return conn.start == sourcePort && conn.end == destPort;
+                    });
+
+                if (!exists)
+                {
+                    connections.push_back({ sourcePort, destPort });
+
+                    // persist to processor state
+                    juce::ValueTree connTree("Connection");
+                    connTree.setProperty("sourceId", sourcePort->getParentNode()->getUniqueId(), nullptr);
+                    connTree.setProperty("sourcePort", sourcePort->getIndex(), nullptr);
+                    connTree.setProperty("destId", destPort->getParentNode()->getUniqueId(), nullptr);
+                    connTree.setProperty("destPort", destPort->getIndex(), nullptr);
+                    
+                    // use getOrCreateChildWithName to safely add to the processor state
+                    auto connsTree = processorRef.graphState.getOrCreateChildWithName("Connections", nullptr);
+                    connsTree.addChild(connTree, -1, nullptr);
+
+                    DBG ("connected");
+                }
+            }
+
             draggingConnector = nullptr;
             repaint();
         }

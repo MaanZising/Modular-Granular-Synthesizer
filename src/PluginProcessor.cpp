@@ -186,7 +186,9 @@ void ModularGranularSynthesizer::setStateInformation (const void* data, int size
     juce::ignoreUnused (data, sizeInBytes);
     auto xml = juce::parseXML(juce::String::fromUTF8((const char*)data, sizeInBytes));
         if (xml != nullptr)
+        {
             graphState = juce::ValueTree::fromXml(*xml);
+        }
 }
 
 //==============================================================================
