@@ -44,20 +44,20 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (ModularGranula
     }
 
     // load connections
-    auto connsTree = processorRef.graphState.getChildWithName("Connections");
-    for (int i = 0; i < connsTree.getNumChildren(); ++i)
+    for (int i = 0; i < processorRef.graphState.getNumChildren(); ++i)
     {
-        auto child = connsTree.getChild(i);
-
-        auto* sourceNode = findNodeById((juce::int64)child["sourceId"]);
-        auto* destNode   = findNodeById((juce::int64)child["destId"]);
-
-        if (sourceNode && destNode)
+        auto child = processorRef.graphState.getChild(i);
+        if (child.hasType("Connection"))
         {
-            auto* sourcePort = sourceNode->getOutputPort((int)child["sourcePort"]);
-            auto* destPort   = destNode->getInputPort((int)child["destPort"]);
+            auto* sourceNode = findNodeById((juce::int64)child["sourceId"]);
+            auto* destNode   = findNodeById((juce::int64)child["destId"]);
 
-            connections.push_back({ sourcePort, destPort });
+            if (sourceNode && destNode)
+            {
+                auto* sourcePort = sourceNode->getOutputPort((int)child["sourcePort"]);
+                auto* destPort   = destNode->getInputPort((int)child["destPort"]);
+                connections.push_back({ sourcePort, destPort });
+            }
         }
     }
 }
@@ -120,7 +120,6 @@ void AudioPluginAudioProcessorEditor::removeConnection (ConnectorComponent* p)
             {
                 if (c.start == p || c.end == p)
                 {
-                    DBG ("disconnected");
                     return true;
                 }
                 return false;
@@ -130,15 +129,17 @@ void AudioPluginAudioProcessorEditor::removeConnection (ConnectorComponent* p)
     );
 
     // remove from processor state
-    auto connsTree = processorRef.graphState.getChildWithName("Connections");
-    for (int i = 0; i < connsTree.getNumChildren(); ++i)
+    for (int i = processorRef.graphState.getNumChildren(); --i >= 0;)
     {
-        auto child = connsTree.getChild(i);
-        if ((juce::int64)child["sourceId"] == p->getParentNode()->getUniqueId() ||
-            (juce::int64)child["destId"] == p->getParentNode()->getUniqueId())
+        auto child = processorRef.graphState.getChild(i);
+        if (child.hasType("Connection"))
         {
-            connsTree.removeChild(i, nullptr);
-            break;
+            if ((juce::int64)child["sourceId"] == p->getParentNode()->getUniqueId() ||
+                (juce::int64)child["destId"] == p->getParentNode()->getUniqueId())
+            {
+                processorRef.graphState.removeChild(i, nullptr);
+                break;
+            }
         }
     }
 
@@ -173,6 +174,9 @@ void AudioPluginAudioProcessorEditor::removeNode(NodeComponent* node)
 {
     if (node == nullptr) return;
 
+    // explicitly hide and remove from parent view before deleting from memory
+    removeChildComponent(node);
+
     // capture the id before the node is deleted
     const auto idToRemove = node->getUniqueId();
     
@@ -188,13 +192,17 @@ void AudioPluginAudioProcessorEditor::removeNode(NodeComponent* node)
 
     // remove all connections involving this node
     auto connsTree = processorRef.graphState.getChildWithName("Connections");
-    for (int i = connsTree.getNumChildren(); --i >= 0; )
+    for (int i = processorRef.graphState.getNumChildren(); --i >= 0;)
     {
-        auto child = connsTree.getChild(i);
-        if ((juce::int64)child["sourceId"] == node->getUniqueId() ||
-            (juce::int64)child["destId"] == node->getUniqueId())
+        auto child = processorRef.graphState.getChild(i);
+        if (child.hasType("Connection"))
         {
-            connsTree.removeChild(i, nullptr);
+            if ((juce::int64)child["sourceId"] == node->getUniqueId() ||
+                (juce::int64)child["destId"] == node->getUniqueId())
+            {
+                processorRef.graphState.removeChild(i, nullptr);
+                break;
+            }
         }
     }
 
@@ -232,9 +240,10 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
         if (!clickedOnNode)
         {
             juce::PopupMenu menu;
-            menu.addItem(1, "Add Node A");
-            menu.addItem(2, "Add Node B");
+            menu.addItem(1, "Audio Input");
+            menu.addItem(2, "Audio Output");
             menu.addItem(3, "Granulator");
+            menu.addItem(4, "Oscillator");
 
             menu.showMenuAsync
             (
@@ -248,13 +257,16 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
                     case 0:
                         return; // cancelled
                     case 1:
-                        addNode ("Node A", 1, 2, juce::Rectangle<int>(pos.x, pos.y, 80, 50));
+                        addNode ("Audio Input", 0, 2, juce::Rectangle<int>(pos.x, pos.y, 120, 40));
                         break;
                     case 2:
-                        addNode ("Node B", 2, 1, juce::Rectangle<int>(pos.x, pos.y, 80, 50));
+                        addNode ("Audio Output", 2, 0, juce::Rectangle<int>(pos.x, pos.y, 120, 40));
                         break;
                     case 3:
                         addNode ("Granulator", 6, 2, juce::Rectangle<int>(pos.x, pos.y, 80, 100));
+                        break;
+                    case 4:
+                        addNode ("Oscillator", 1, 1, juce::Rectangle<int>(pos.x, pos.y, 80, 40));
                         break;
                     }
                 }
@@ -325,11 +337,7 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
                     connTree.setProperty("destId", destPort->getParentNode()->getUniqueId(), nullptr);
                     connTree.setProperty("destPort", destPort->getIndex(), nullptr);
                     
-                    // use getOrCreateChildWithName to safely add to the processor state
-                    auto connsTree = processorRef.graphState.getOrCreateChildWithName("Connections", nullptr);
-                    connsTree.addChild(connTree, -1, nullptr);
-
-                    DBG ("connected");
+                    processorRef.graphState.addChild(connTree, -1, nullptr);
                 }
             }
 

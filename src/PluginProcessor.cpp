@@ -13,6 +13,7 @@ ModularGranularSynthesizer::ModularGranularSynthesizer()
                        ),
         mainProcessor (new juce::AudioProcessorGraph()) // initiate the main AudioProcessorGraph
 {
+    graphState.addListener(this);
 }
 
 ModularGranularSynthesizer::~ModularGranularSynthesizer()
@@ -87,29 +88,15 @@ void ModularGranularSynthesizer::changeProgramName (int index, const juce::Strin
 //==============================================================================
 void ModularGranularSynthesizer::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    mainProcessor->setPlayConfigDetails (getMainBusNumInputChannels(),
+    mainProcessor->setPlayConfigDetails
+    (
+        getMainBusNumInputChannels(),
         getMainBusNumOutputChannels(),
         sampleRate,
-        samplesPerBlock);
+        samplesPerBlock
+    );
     mainProcessor->prepareToPlay (sampleRate, samplesPerBlock);
     initialiseGraph();
-
-#if 0
-    std::vector<Node::Ptr> node(2);
-    for (long unsigned int i = 0; i < 2; ++i)
-        node[i] = mainProcessor->addNode (std::make_unique<OscillatorProcessor>());
-
-    auto granulatorNode = mainProcessor->addNode (std::make_unique<GranulatorProcessor>());
-
-    mainProcessor->addConnection ({ {node[0]->nodeID, 0}, {audioOutputNode->nodeID, 0} });
-    mainProcessor->addConnection ({ {node[0]->nodeID, 0}, {audioOutputNode->nodeID, 1} });
-    mainProcessor->addConnection ({ {node[0]->nodeID, 0}, {granulatorNode->nodeID, 2} });
-
-    mainProcessor->addConnection ({ {audioInputNode->nodeID, 0}, {granulatorNode->nodeID, 0} });
-    mainProcessor->addConnection ({ {audioInputNode->nodeID, 1}, {granulatorNode->nodeID, 1} });
-    //mainProcessor->addConnection ({ {granulatorNode->nodeID, 0}, {audioOutputNode->nodeID, 0} });
-    //mainProcessor->addConnection ({ {granulatorNode->nodeID, 1}, {audioOutputNode->nodeID, 1} });
-#endif
 }
 
 void ModularGranularSynthesizer::releaseResources()
@@ -196,4 +183,203 @@ void ModularGranularSynthesizer::setStateInformation (const void* data, int size
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new ModularGranularSynthesizer();
+}
+
+
+
+
+
+
+//////////
+
+std::unique_ptr<juce::AudioProcessor> ModularGranularSynthesizer::createProcessorForType(const juce::String& name)
+{
+    if (name == "Audio Input")
+        return std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor> (juce::AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode);
+
+    if (name == "Audio Output")
+        return std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor> (juce::AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode);
+
+    if (name == "Granulator")
+        return std::make_unique<GranulatorProcessor>();
+
+    if (name == "Oscillator")
+        return std::make_unique<OscillatorProcessor>();
+        
+    return nullptr;
+}
+
+void ModularGranularSynthesizer::createAudioNodeFromState(juce::ValueTree child)
+{
+    if (!child.hasType("Node")) return;
+
+    if (child.hasProperty("graphNodeId"))
+    {
+        auto existingId = (int)child.getProperty("graphNodeId");
+        if (mainProcessor->getNodeForId((juce::AudioProcessorGraph::NodeID)existingId) != nullptr)
+            return; 
+    }
+
+    auto name = child.getProperty("name").toString();
+    auto processor = createProcessorForType(name);
+    
+    if (processor != nullptr)
+    {
+        auto node = mainProcessor->addNode(std::move(processor));
+        
+        // Use a variant property safely
+        child.setProperty("graphNodeId", (int)node->nodeID.uid, nullptr);
+        
+        // Prepare the node immediately with current processing constraints
+        node->getProcessor()->prepareToPlay(getSampleRate(), getBlockSize());
+    }
+}
+
+// Helper function to find the internal Graph NodeID from your custom GUI ID
+juce::AudioProcessorGraph::NodeID ModularGranularSynthesizer::getGraphIdForGuiId(juce::int64 guiId)
+{
+    for (int i = 0; i < graphState.getNumChildren(); ++i)
+    {
+        auto child = graphState.getChild(i);
+        if (child.hasType("Node") && (juce::int64)child.getProperty("id") == guiId)
+        {
+            if (child.hasProperty("graphNodeId"))
+            {
+                return juce::AudioProcessorGraph::NodeID((juce::uint32)(int)child.getProperty("graphNodeId"));
+            }
+        }
+    }
+    return {}; // invalid ID
+}
+
+void ModularGranularSynthesizer::valueTreeChildAdded(juce::ValueTree& parent, juce::ValueTree& child)
+{
+    if (child.hasType("Node"))
+    {
+        createAudioNodeFromState(child);
+    }
+    else if (child.hasType("Connection"))
+    {
+        // fetch custom GUI IDs and port indexes from the tree
+        juce::int64 sourceGuiId = child.getProperty("sourceId");
+        juce::int64 destGuiId   = child.getProperty("destId");
+        int sourcePortIndex     = child.getProperty("sourcePort");
+        int destPortIndex       = child.getProperty("destPort");
+
+        // translate GUI IDs to the Graph's internal NodeIDs
+        auto sourceGraphId = getGraphIdForGuiId(sourceGuiId);
+        auto destGraphId   = getGraphIdForGuiId(destGuiId);
+
+        // apply the connection to the audio graph if both nodes exist
+        if (sourceGraphId != juce::AudioProcessorGraph::NodeID() && 
+            destGraphId   != juce::AudioProcessorGraph::NodeID())
+        {
+            juce::AudioProcessorGraph::NodeAndChannel sourceNode { sourceGraphId, sourcePortIndex };
+            juce::AudioProcessorGraph::NodeAndChannel destNode   { destGraphId,   destPortIndex };
+            juce::AudioProcessorGraph::Connection conn           { sourceNode,    destNode };
+
+            if (mainProcessor->canConnect (conn))
+            {
+                mainProcessor->addConnection (conn);
+                juce::Logger::writeToLog("Audio Connection successfully established in backend!");
+                mainProcessor->removeIllegalConnections();
+            }
+            else
+            {
+                juce::Logger::writeToLog("Audio Connection failed.");
+            }
+        }
+    }
+}
+
+void ModularGranularSynthesizer::valueTreeChildRemoved(juce::ValueTree& parent, juce::ValueTree& child, int index)
+{
+    if (child.hasType("Node"))
+    {
+        // Find the internal node using the ID we stored
+        auto graphId = juce::AudioProcessorGraph::NodeID((juce::int32)child.getProperty("graphNodeId"));
+        
+        if (auto* node = mainProcessor->getNodeForId(graphId))
+        {
+            mainProcessor->removeNode(graphId);
+        }
+    }
+    else if (child.hasType("Connection"))
+    {
+        // translate IDs to find the existing connection
+        juce::int64 sourceGuiId = child.getProperty("sourceId");
+        juce::int64 destGuiId   = child.getProperty("destId");
+        int sourcePortIndex     = child.getProperty("sourcePort");
+        int destPortIndex       = child.getProperty("destPort");
+
+        auto sourceGraphId = getGraphIdForGuiId(sourceGuiId);
+        auto destGraphId   = getGraphIdForGuiId(destGuiId);
+
+        if (sourceGraphId != juce::AudioProcessorGraph::NodeID() && 
+            destGraphId   != juce::AudioProcessorGraph::NodeID())
+        {
+            juce::AudioProcessorGraph::NodeAndChannel sourceNode { sourceGraphId, sourcePortIndex };
+            juce::AudioProcessorGraph::NodeAndChannel destNode   { destGraphId,   destPortIndex };
+            juce::AudioProcessorGraph::Connection conn           { sourceNode,    destNode };
+
+            if (mainProcessor->isConnected(conn))
+            {
+                mainProcessor->removeConnection(conn);
+            }
+        }
+    }
+}
+
+void ModularGranularSynthesizer::initialiseGraph()
+{
+    mainProcessor->clear();
+    
+    // reload nodes from existing state
+    for (int i = 0; i < graphState.getNumChildren(); ++i)
+    {
+        auto child = graphState.getChild(i);
+        if (child.hasType ("Node"))
+        {
+            auto name = child.getProperty ("name").toString();
+            auto processor = createProcessorForType (name);
+            
+            if (processor != nullptr)
+            {
+                auto node = mainProcessor->addNode (std::move (processor));
+                child.setPropertyExcludingListener (this, "graphNodeId", (int)node->nodeID.uid, nullptr);
+                node->getProcessor()->prepareToPlay (getSampleRate(), getBlockSize());
+            }
+        }
+    }
+
+    // reload connections from existing state
+    for (int i = 0; i < graphState.getNumChildren(); ++i)
+    {
+        auto child = graphState.getChild(i);
+        
+        if (child.hasType ("Connection"))
+        {
+            juce::int64 sourceGuiId = child.getProperty ("sourceId");
+            juce::int64 destGuiId   = child.getProperty ("destId");
+            int sourcePortIndex     = child.getProperty ("sourcePort");
+            int destPortIndex       = child.getProperty ("destPort");
+
+            auto sourceGraphId = getGraphIdForGuiId (sourceGuiId);
+            auto destGraphId   = getGraphIdForGuiId (destGuiId);
+
+            if (sourceGraphId != juce::AudioProcessorGraph::NodeID() && 
+                destGraphId   != juce::AudioProcessorGraph::NodeID())
+            {
+                // Explicit initialization
+                juce::AudioProcessorGraph::NodeAndChannel sourceNode { sourceGraphId, sourcePortIndex };
+                juce::AudioProcessorGraph::NodeAndChannel destNode   { destGraphId,   destPortIndex };
+                juce::AudioProcessorGraph::Connection conn           { sourceNode,    destNode };
+
+                if (mainProcessor->canConnect (conn))
+                {
+                    mainProcessor->addConnection (conn);
+                }
+            }
+        }
+    }
 }

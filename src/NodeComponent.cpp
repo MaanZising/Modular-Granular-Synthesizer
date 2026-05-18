@@ -39,5 +39,58 @@ void NodeComponent::paint(juce::Graphics& g)
     g.fillRoundedRectangle (getLocalBounds().toFloat(), 5.0f);
 
     g.setColour (juce::Colours::white);
-    g.drawText (nodeName, getLocalBounds(), juce::Justification::centred);
+
+    std::vector<juce::String> inputPortNames {};
+    std::vector<juce::String> outputPortNames {};
+    int offsetX {};
+
+    if (nodeName == "Audio Input")
+    {
+        outputPortNames.assign ({"L", "R"});
+        offsetX = -10;
+    }
+    else if (nodeName == "Audio Output")
+    {
+        inputPortNames.assign ({"L", "R"});
+        offsetX = 10;
+    }
+
+    g.setFont (11.0f);
+
+    for (int i = 0; i < outputs.size(); ++i)
+    {
+        auto portBounds = outputs[i]->getBounds();
+        
+        juce::Rectangle<int> labelArea
+        (
+            portBounds.getX() - 44,
+            portBounds.getY() - 5,
+            40,
+            portBounds.getHeight() + 10
+        );
+
+        juce::String labelText = (i < outputPortNames.size()) ? outputPortNames[i] : "";
+        
+        g.drawText (labelText, labelArea, juce::Justification::centredRight, true);
+    }
+
+    for (int i = 0; i < inputs.size(); ++i)
+    {
+        auto portBounds = inputs[i]->getBounds();
+        
+        juce::Rectangle<int> labelArea
+        (
+            portBounds.getRight() + 4,
+            portBounds.getY() - 5,
+            40,
+            portBounds.getHeight() + 10
+        );
+
+        juce::String labelText = (i < inputPortNames.size()) ? inputPortNames[i] : "";
+        
+        g.drawText (labelText, labelArea, juce::Justification::centredLeft, true);
+    }
+
+    g.setFont (14.0f);
+    g.drawText (nodeName, offsetX, 0, getLocalBounds().getWidth(), getLocalBounds().getHeight(), juce::Justification::centred);
 }

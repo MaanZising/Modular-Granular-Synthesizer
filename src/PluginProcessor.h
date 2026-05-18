@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
+#include <juce_data_structures/juce_data_structures.h>
 
 #include "Granulator.h"
 #include "Oscillator.h"
@@ -12,7 +13,8 @@ using Node = juce::AudioProcessorGraph::Node;
 #define JucePlugin_Name "Modular Granular Synthesizer"
 
 //==============================================================================
-class ModularGranularSynthesizer final : public juce::AudioProcessor
+class ModularGranularSynthesizer final : public juce::AudioProcessor,
+                                         private juce::ValueTree::Listener
 {
 public:
     //==============================================================================
@@ -59,19 +61,18 @@ public:
         return nextNodeId++;
     }
 
+    void valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded) override;
+    void valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int index) override;
+
 private:
     ////////////////
     std::unique_ptr<juce::AudioProcessorGraph> mainProcessor;
 
-    Node::Ptr audioInputNode;
-    Node::Ptr audioOutputNode;
+    void initialiseGraph();
 
-    void initialiseGraph()
-    {
-        mainProcessor->clear();
-        audioInputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioInputNode));
-        audioOutputNode = mainProcessor->addNode (std::make_unique<AudioGraphIOProcessor> (AudioGraphIOProcessor::audioOutputNode));
-    }
+    std::unique_ptr<juce::AudioProcessor> createProcessorForType(const juce::String& name);
+    void createAudioNodeFromState(juce::ValueTree child);
+    juce::AudioProcessorGraph::NodeID getGraphIdForGuiId(juce::int64 guiId);
 
     //==============================================================================
     // JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ModularGranularSynthesizer)
