@@ -106,11 +106,15 @@ void NodeComponent::paint(juce::Graphics& g)
     {
         inputPortNames.assign ({"In L", "In R", "Rate", "Delay", "Length", "Interval"});
         outputPortNames.assign ({"L", "R"});
-        offsetY = -52;
+        offsetY = -53;
     }
     else if (nodeName == "Oscillator")
     {
         inputPortNames.assign ({"Freq"});
+        nodeNameText = "";
+    }
+    else if (nodeName == "Number Box")
+    {
         nodeNameText = "";
     }
 

@@ -18,21 +18,5 @@ private:
     int type { 0 };
     juce::dsp::ProcessSpec spec;
 
-    juce::dsp::Oscillator<float> osc
-    {
-        [] (float phase)
-        {
-            // sine
-            return std::sin(phase);
-
-            // triangle
-            //return std::abs (phase) / juce::MathConstants<float>::pi * 2.0f - 1.0f;
-
-            // sawtooth
-            //return phase / juce::MathConstants<float>::pi;
-
-            // square
-            //return phase < 0.0f ? 1.0f : -1.0f;
-        }
-    };
+    juce::dsp::Oscillator<float> osc;
 };

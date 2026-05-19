@@ -253,6 +253,7 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
             menu.addItem(2, "Audio Output");
             menu.addItem(3, "Granulator");
             menu.addItem(4, "Oscillator");
+            menu.addItem(5, "Number Box");
 
             menu.showMenuAsync
             (
@@ -272,10 +273,13 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
                         addNode ("Audio Output", 2, 0, juce::Rectangle<int>(pos.x, pos.y, 120, 50));
                         break;
                     case 3:
-                        addNode ("Granulator", 6, 2, juce::Rectangle<int>(pos.x, pos.y, 100, 140));
+                        addNode ("Granulator", 6, 2, juce::Rectangle<int>(pos.x, pos.y, 100, 150));
                         break;
                     case 4:
                         addNode ("Oscillator", 1, 1, juce::Rectangle<int>(pos.x, pos.y, 160, 35));
+                        break;
+                    case 5:
+                        addNode ("Number Box", 0, 1, juce::Rectangle<int>(pos.x, pos.y, 60, 35));
                         break;
                     }
                 }
@@ -406,102 +410,6 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
 }
 
 //////////////////////////////////////////////////////////////////
-
-#if 0
-juce::var AudioPluginAudioProcessorEditor::serializeGraph()
-{
-    juce::Array<juce::var> nodeArray;
-    for (auto* node : nodes)
-    {
-        juce::DynamicObject::Ptr obj = new juce::DynamicObject();
-        obj->setProperty("id", static_cast<juce::int64>(node->getUniqueId()));
-        obj->setProperty("name", node->getName());
-        obj->setProperty("x", node->getX());
-        obj->setProperty("y", node->getY());
-        obj->setProperty("inputs", node->inputs.size());
-        obj->setProperty("outputs", node->outputs.size());
-        nodeArray.add(obj.get());
-    }
-
-    juce::Array<juce::var> connArray;
-    for (auto& c : connections)
-    {
-        juce::DynamicObject::Ptr obj = new juce::DynamicObject();
-        obj->setProperty("startNode", c.start->getParentNode()->getUniqueId());
-        obj->setProperty("startIndex", c.start->getIndex());
-        obj->setProperty("endNode", c.end->getParentNode()->getUniqueId());
-        obj->setProperty("endIndex", c.end->getIndex());
-        connArray.add(obj.get());
-    }
-
-    juce::DynamicObject::Ptr root = new juce::DynamicObject();
-    root->setProperty("nodes", nodeArray);
-    root->setProperty("connections", connArray);
-
-    return root.get();
-}
-
-void AudioPluginAudioProcessorEditor::saveToFile(const juce::File& file)
-{
-    auto json = juce::JSON::toString(serializeGraph());
-    file.replaceWithText(json);
-}
-
-void AudioPluginAudioProcessorEditor::loadFromFile(const juce::File& file)
-{
-    auto json = juce::JSON::parse(file);
-    if (!json.isObject()) return;
-
-    nodes.clear();
-    connections.clear();
-
-    auto* root = json.getDynamicObject();
-    auto nodeArray = root->getProperty("nodes");
-    auto connArray = root->getProperty("connections");
-
-    for (auto& n : *nodeArray.getArray())
-    {
-        auto* obj = n.getDynamicObject();
-        auto bounds = juce::Rectangle<int>(
-            (int)obj->getProperty("x"),
-            (int)obj->getProperty("y"),
-            (int)obj->getProperty("w"),
-            (int)obj->getProperty("h"));
-
-        auto* node = new NodeComponent(
-            obj->getProperty("name").toString(),
-            (int)obj->getProperty("inputs"),
-            (int)obj->getProperty("outputs"));
-
-        node->setUniqueId((int)obj->getProperty("id"));
-        nodes.add(node);
-        addAndMakeVisible(node);
-        node->setBounds(bounds);
-        hookUpNode(node);
-    }
-
-    for (auto& c : *connArray.getArray())
-    {
-        auto* obj = c.getDynamicObject();
-        auto startNodeId = (int)obj->getProperty("startNode");
-        auto endNodeId   = (int)obj->getProperty("endNode");
-        auto startIndex  = (int)obj->getProperty("startIndex");
-        auto endIndex    = (int)obj->getProperty("endIndex");
-
-        auto* startNode = findNodeById(startNodeId);
-        auto* endNode   = findNodeById(endNodeId);
-
-        if (startNode && endNode)
-        {
-            auto* startPort = startNode->outputs[startIndex];
-            auto* endPort   = endNode->inputs[endIndex];
-            connections.push_back({ startPort, endPort });
-        }
-    }
-
-    repaint();
-}
-#endif
 
 NodeComponent* AudioPluginAudioProcessorEditor::findNodeById(juce::int64 id)
 {

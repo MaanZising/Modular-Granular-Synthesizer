@@ -205,6 +205,9 @@ std::unique_ptr<juce::AudioProcessor> ModularGranularSynthesizer::createProcesso
 
     if (name == "Oscillator")
         return std::make_unique<OscillatorProcessor>();
+    
+    if (name == "Number Box")
+        return std::make_unique<NumberBox>();
         
     return nullptr;
 }

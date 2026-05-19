@@ -27,13 +27,6 @@ void OscillatorProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::ignoreUnused (midiMessages);
 
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
-    buffer.clear();
 
     switch (type)
     {
@@ -65,13 +58,15 @@ void OscillatorProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         break;
     }
 
-    // 1. Create an AudioBlock from the buffer
-    juce::dsp::AudioBlock<float> block (buffer);
-    
-    // 2. Create a ProcessContext that "replaces" the data in the block
-    juce::dsp::ProcessContextReplacing<float> context (block);
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+    {
+        freq = buffer.getReadPointer(0)[sample];
+        if (freq < 0.0f) freq = 0.0f;
+        osc.setFrequency (freq);
+    }
 
-    // 3. Let the oscillator do the work
+    juce::dsp::AudioBlock<float> block (buffer);
+    juce::dsp::ProcessContextReplacing<float> context (block);
     osc.process (context);
 }
 

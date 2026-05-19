@@ -6,6 +6,7 @@
 
 #include "Granulator.h"
 #include "Oscillator.h"
+#include "NumberBox.h"
 
 using AudioGraphIOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
 using Node = juce::AudioProcessorGraph::Node;
