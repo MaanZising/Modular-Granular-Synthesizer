@@ -225,6 +225,14 @@ void ModularGranularSynthesizer::createAudioNodeFromState(juce::ValueTree child)
     
     if (processor != nullptr)
     {
+        // if it's an oscillator, make sure we check if a waveType was already saved
+        if (name == "Oscillator")
+        {
+            int savedType = child.getProperty("waveType", 0); // default to 0 (Sine)
+            if (auto* osc = dynamic_cast<OscillatorProcessor*>(processor.get()))
+                osc->setWaveType(savedType);
+        }
+
         auto node = mainProcessor->addNode(std::move(processor));
         
         // Use a variant property safely

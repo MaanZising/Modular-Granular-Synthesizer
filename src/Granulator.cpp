@@ -95,8 +95,6 @@ void GranulatorProcessor::triggerGrainBuffer (int channel, juce::AudioBuffer<flo
         if (rate < 0.0)
             rate = 0.0;
 
-        rate = 1.0;
-
         // delay time, channel 3, (0.001, maximum delay time)
         delayTime = static_cast<int> (buffer.getReadPointer(3)[sample] * sampleRate);
         if (delayTime >= static_cast<int> (sampleRate * maxDelayTime))

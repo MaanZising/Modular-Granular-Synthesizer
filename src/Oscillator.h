@@ -11,10 +11,11 @@ public:
     void prepareToPlay (double, int) override;
     void processBlock (juce::AudioSampleBuffer&, juce::MidiBuffer&) override;
     const juce::String getName() const override;
+    void setWaveType (int newType) { type = newType; }
 
 private:
     float freq { 220.0f };
-    int type { 5 };
+    int type { 0 };
     juce::dsp::ProcessSpec spec;
 
     juce::dsp::Oscillator<float> osc

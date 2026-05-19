@@ -18,19 +18,67 @@ NodeComponent::NodeComponent(const juce::String& name, int numInputs, int numOut
         outputs.add(port);
         addAndMakeVisible(port);
     }
+
+    // create wave selector for oscillator
+    if (nodeName == "Oscillator")
+    {
+        waveSelector.addSectionHeading ("Bipolar");
+        waveSelector.addItem ("Sine", 1);
+        waveSelector.addItem ("Triangle", 2);
+        waveSelector.addItem ("Sawtooth", 3);
+        waveSelector.addItem ("Square", 4);
+
+        waveSelector.addSectionHeading ("Unipolar");
+        waveSelector.addItem ("Sine", 5);
+        waveSelector.addItem ("Triangle", 6);
+        waveSelector.addItem ("Sawtooth", 7);
+        waveSelector.addItem ("Square", 8);
+
+        waveSelector.setSelectedId (1); // default to Sine Bipolar
+
+        addAndMakeVisible (waveSelector);
+
+        waveSelector.onChange = [this]()
+        {
+            if (onWaveTypeChanged)
+            {
+                // JUCE ComboBox items start at 1, but the switch case starts at 0
+                int zeroIndexedChoice = waveSelector.getSelectedId() - 1;
+                onWaveTypeChanged (zeroIndexedChoice);
+            }
+        };
+    }
+
+    if (nodeName == "Granulator")
+        offsetY = -25;
 }
 
 void NodeComponent::resized()
 {
     // layout inputs on left edge
-    int spacing = getHeight() / (inputs.size() + 1);
+    int spacing = (getHeight() + offsetY) / (inputs.size() + 1);
     for (int i = 0; i < inputs.size(); ++i)
-        inputs[i]->setBounds(-5, spacing * (i+1) - 5, 12, 10);
+        inputs[i]->setBounds(-5, spacing * (i+1) - 5 - offsetY, 12, 10);
 
     // layout outputs on right edge
-    spacing = getHeight() / (outputs.size() + 1);
+    spacing = (getHeight() + offsetY) / (outputs.size() + 1);
     for (int i = 0; i < outputs.size(); ++i)
-        outputs[i]->setBounds(getWidth()-7, spacing * (i+1) - 5, 12, 10);
+        outputs[i]->setBounds(getWidth()-7, spacing * (i+1) - 5 - offsetY, 12, 10);
+    
+    // wave selector
+    if (nodeName == "Oscillator")
+    {
+        // Adjust width (e.g., 100) and height (e.g., 20) to fit your Node bounds
+        int comboWidth = 100;
+        int comboHeight = 20;
+        waveSelector.setBounds
+        (
+            (getWidth() - comboWidth) / 2 + 10, 
+            (getHeight() - comboHeight) / 2, 
+            comboWidth, 
+            comboHeight
+        );
+    }
 }
 
 void NodeComponent::paint(juce::Graphics& g)
@@ -42,7 +90,7 @@ void NodeComponent::paint(juce::Graphics& g)
 
     std::vector<juce::String> inputPortNames {};
     std::vector<juce::String> outputPortNames {};
-    int offsetX {};
+    auto nodeNameText = nodeName;
 
     if (nodeName == "Audio Input")
     {
@@ -52,7 +100,18 @@ void NodeComponent::paint(juce::Graphics& g)
     else if (nodeName == "Audio Output")
     {
         inputPortNames.assign ({"L", "R"});
-        offsetX = 10;
+        offsetX = 8;
+    }
+    else if (nodeName == "Granulator")
+    {
+        inputPortNames.assign ({"In L", "In R", "Rate", "Delay", "Length", "Interval"});
+        outputPortNames.assign ({"L", "R"});
+        offsetY = -52;
+    }
+    else if (nodeName == "Oscillator")
+    {
+        inputPortNames.assign ({"Freq"});
+        nodeNameText = "";
     }
 
     g.setFont (11.0f);
@@ -91,6 +150,6 @@ void NodeComponent::paint(juce::Graphics& g)
         g.drawText (labelText, labelArea, juce::Justification::centredLeft, true);
     }
 
-    g.setFont (14.0f);
-    g.drawText (nodeName, offsetX, 0, getLocalBounds().getWidth(), getLocalBounds().getHeight(), juce::Justification::centred);
+    g.setFont (15.0f);
+    g.drawText (nodeNameText, offsetX, offsetY, getLocalBounds().getWidth(), getLocalBounds().getHeight(), juce::Justification::centred);
 }

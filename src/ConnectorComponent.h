@@ -9,20 +9,9 @@ enum class ConnectorType { Input, Output};
 class ConnectorComponent : public juce::Component
 {
 public:
-    ConnectorComponent(ConnectorType type, NodeComponent* parent, int idx)
-          : connectorType (type),
-            parentNode (parent),
-            index (idx)
-    {
-    }
+    ConnectorComponent(ConnectorType type, NodeComponent* parent, int idx);
 
-    void paint(juce::Graphics& g) override
-    {
-        g.setColour (orange);
-        //if (connectorType == ConnectorType::Input) g.setColour (blue);
-        g.fillEllipse (getLocalBounds().toFloat());
-        g.fillRoundedRectangle (getLocalBounds().toFloat(), 5.0f);
-    }
+    void paint(juce::Graphics& g) override;
 
     void mouseDown(const juce::MouseEvent& e) override
     {

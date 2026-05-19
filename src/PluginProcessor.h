@@ -60,19 +60,20 @@ public:
     {
         return nextNodeId++;
     }
+    juce::AudioProcessorGraph::NodeID getGraphIdForGuiId(juce::int64 guiId);
 
     void valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded) override;
     void valueTreeChildRemoved (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenRemoved, int index) override;
 
+    std::unique_ptr<juce::AudioProcessorGraph> mainProcessor;
+
 private:
     ////////////////
-    std::unique_ptr<juce::AudioProcessorGraph> mainProcessor;
 
     void initialiseGraph();
 
     std::unique_ptr<juce::AudioProcessor> createProcessorForType(const juce::String& name);
     void createAudioNodeFromState(juce::ValueTree child);
-    juce::AudioProcessorGraph::NodeID getGraphIdForGuiId(juce::int64 guiId);
 
     //==============================================================================
     // JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ModularGranularSynthesizer)

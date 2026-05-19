@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "NodeComponent.h"
+#include "Oscillator.h"
 
 //==============================================================================
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (ModularGranularSynthesizer& p)
@@ -36,6 +37,14 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (ModularGranula
 
         // update processor’s counter so new nodes don’t collide
         processorRef.nextNodeId = std::max(processorRef.nextNodeId, node->getUniqueId() + 1);
+
+        // restore dropdown menu state for oscillator
+        if (nodeTree["name"].toString() == "Oscillator")
+        {
+            int savedType = nodeTree.getProperty("waveType", 0);
+            // JUCE ComboBox indices are 1-based, your processor types are 0-based
+            node->setWaveTypeComboBoxId(savedType + 1); 
+        }
 
         nodes.add(node);
         addAndMakeVisible(node);
@@ -257,16 +266,16 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
                     case 0:
                         return; // cancelled
                     case 1:
-                        addNode ("Audio Input", 0, 2, juce::Rectangle<int>(pos.x, pos.y, 120, 40));
+                        addNode ("Audio Input", 0, 2, juce::Rectangle<int>(pos.x, pos.y, 120, 50));
                         break;
                     case 2:
-                        addNode ("Audio Output", 2, 0, juce::Rectangle<int>(pos.x, pos.y, 120, 40));
+                        addNode ("Audio Output", 2, 0, juce::Rectangle<int>(pos.x, pos.y, 120, 50));
                         break;
                     case 3:
-                        addNode ("Granulator", 6, 2, juce::Rectangle<int>(pos.x, pos.y, 80, 100));
+                        addNode ("Granulator", 6, 2, juce::Rectangle<int>(pos.x, pos.y, 100, 140));
                         break;
                     case 4:
-                        addNode ("Oscillator", 1, 1, juce::Rectangle<int>(pos.x, pos.y, 80, 40));
+                        addNode ("Oscillator", 1, 1, juce::Rectangle<int>(pos.x, pos.y, 160, 35));
                         break;
                     }
                 }
@@ -360,6 +369,31 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
         port->onFinishDrag = [hook](ConnectorComponent* c, const juce::MouseEvent& e){ hook(c,e,true); };
         port->onRightClick = [this](ConnectorComponent* p){ removeConnection (p); };
     }
+
+    // wave type selection
+    node->onWaveTypeChanged = [this, node](int zeroBasedWaveType)
+    {
+        // 1. Update the ValueTree so it saves/restores
+        for (int i = 0; i < processorRef.graphState.getNumChildren(); ++i)
+        {
+            auto child = processorRef.graphState.getChild(i);
+            if (child.hasType("Node") && (juce::int64)child["id"] == node->getUniqueId())
+            {
+                child.setProperty("waveType", zeroBasedWaveType, nullptr);
+                break;
+            }
+        }
+
+        // 2. Push the change directly to the audio engine processor instantly
+        auto graphId = processorRef.getGraphIdForGuiId(node->getUniqueId());
+        if (auto* graphNode = processorRef.mainProcessor->getNodeForId(graphId))
+        {
+            if (auto* oscProc = dynamic_cast<OscillatorProcessor*>(graphNode->getProcessor()))
+            {
+                oscProc->setWaveType(zeroBasedWaveType);
+            }
+        }
+    };
 
     // node movement repaint
     node->onMoved = [this] { repaint(); };

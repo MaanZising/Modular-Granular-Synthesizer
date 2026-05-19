@@ -56,6 +56,11 @@ public:
         return (index >= 0 && index < outputs.size()) ? outputs[index] : nullptr;
     }
 
+    void setWaveTypeComboBoxId(int id)
+    {
+        waveSelector.setSelectedId(id, juce::dontSendNotification);
+    }
+
     juce::int64 getUniqueId() const { return uniqueId; }
 
     void setUniqueId(juce::int64 id) { uniqueId = id; }
@@ -64,6 +69,7 @@ public:
     juce::OwnedArray<ConnectorComponent> outputs;
     std::function<void()> onMoved;
     std::function<void(NodeComponent*)> onContextMenu;
+    std::function<void(int)> onWaveTypeChanged;
 
 private:
     juce::Colour lightGrey {juce::Colour (195, 195, 195)};
@@ -75,6 +81,10 @@ private:
     juce::ComponentDragger dragger;
     juce::String nodeName;
     juce::int64 uniqueId;
+    juce::ComboBox waveSelector;
+
+    int offsetX { 0 };
+    int offsetY { 0 };
 
     bool isClickOnConnector(const juce::MouseEvent& e)
     {
