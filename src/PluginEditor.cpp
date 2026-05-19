@@ -273,11 +273,19 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
         if (!clickedOnNode)
         {
             juce::PopupMenu menu;
-            menu.addItem(1, "Audio Input");
-            menu.addItem(2, "Audio Output");
-            menu.addItem(3, "Granulator");
-            menu.addItem(4, "Oscillator");
-            menu.addItem(5, "Number Box");
+            juce::PopupMenu operatorMenu;
+
+            operatorMenu.addItem (6, "+");
+            operatorMenu.addItem (7, "-");
+            operatorMenu.addItem (8, "*");
+            operatorMenu.addItem (9, "/");
+            
+            menu.addItem (1, "Audio Input");
+            menu.addItem (2, "Audio Output");
+            menu.addItem (3, "Granulator");
+            menu.addItem (4, "Oscillator");
+            menu.addItem (5, "Number Box");
+            menu.addSubMenu ("Operators", operatorMenu);
 
             menu.showMenuAsync
             (
@@ -304,6 +312,18 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
                         break;
                     case 5:
                         addNode ("Number Box", 0, 1, juce::Rectangle<int>(pos.x, pos.y, 100, 20));
+                        break;
+                    case 6:
+                        addNode ("+", 2, 1, juce::Rectangle<int>(pos.x, pos.y, 50, 50));
+                        break;
+                    case 7:
+                        addNode ("-", 2, 1, juce::Rectangle<int>(pos.x, pos.y, 50, 50));
+                        break;
+                    case 8:
+                        addNode ("*", 2, 1, juce::Rectangle<int>(pos.x, pos.y, 50, 50));
+                        break;
+                    case 9:
+                        addNode ("/", 2, 1, juce::Rectangle<int>(pos.x, pos.y, 50, 50));
                         break;
                     }
                 }

@@ -2,12 +2,12 @@
 
 #include "ProcessorBase.h"
 
-class NumberBox : public ProcessorBase
+class Operator : public ProcessorBase
 {
 public:
-    NumberBox();
+    Operator();
     void processBlock (juce::AudioSampleBuffer&, juce::MidiBuffer&) override;
     const juce::String getName() const override;
-
-    float value { 0.0f };
+    
+    int type { 0 };
 };

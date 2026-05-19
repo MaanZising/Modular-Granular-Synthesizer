@@ -208,6 +208,28 @@ std::unique_ptr<juce::AudioProcessor> ModularGranularSynthesizer::createProcesso
     
     if (name == "Number Box")
         return std::make_unique<NumberBox>();
+
+    // operators
+    if (name == "+")
+    {
+        auto op = std::make_unique<Operator>(); op->type = 0;
+        return op;
+    }
+    if (name == "-")
+    {
+        auto op = std::make_unique<Operator>(); op->type = 1;
+        return op;
+    }
+    if (name == "*")
+    {
+        auto op = std::make_unique<Operator>(); op->type = 2;
+        return op;
+    }
+    if (name == "/")
+    {
+        auto op = std::make_unique<Operator>(); op->type = 3;
+        return op;
+    }
         
     return nullptr;
 }
