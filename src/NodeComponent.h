@@ -61,6 +61,11 @@ public:
         waveSelector.setSelectedId(id, juce::dontSendNotification);
     }
 
+    void setNumberBoxValue(float value)
+    {
+        valueSlider.setValue(value, juce::dontSendNotification);
+    }
+
     juce::int64 getUniqueId() const { return uniqueId; }
 
     void setUniqueId(juce::int64 id) { uniqueId = id; }
@@ -70,10 +75,11 @@ public:
     std::function<void()> onMoved;
     std::function<void(NodeComponent*)> onContextMenu;
     std::function<void(int)> onWaveTypeChanged;
+    std::function<void(float)> onNumberValueChanged;
 
 private:
-    juce::Colour lightGrey {juce::Colour (195, 195, 195)};
-    juce::Colour midGrey {juce::Colour (120, 120, 120)};
+    juce::Colour lightGrey {juce::Colour (200, 200, 200)};
+    juce::Colour midGrey {juce::Colour (140, 140, 140)};
     juce::Colour darkGrey {juce::Colour (60, 60, 60)};
     juce::Colour orange {juce::Colour (225, 145, 10)};
     juce::Colour blue {juce::Colour (80, 125, 185)};
@@ -82,6 +88,7 @@ private:
     juce::String nodeName;
     juce::int64 uniqueId;
     juce::ComboBox waveSelector;
+    juce::Slider valueSlider;
 
     int offsetX { 0 };
     int offsetY { 0 };

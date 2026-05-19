@@ -45,8 +45,8 @@ public:
     std::function<void(ConnectorComponent*)> onRightClick;
 
 private:
-    juce::Colour lightGrey {juce::Colour (195, 195, 195)};
-    juce::Colour midGrey {juce::Colour (120, 120, 120)};
+    juce::Colour lightGrey {juce::Colour (200, 200, 200)};
+    juce::Colour midGrey {juce::Colour (140, 140, 140)};
     juce::Colour darkGrey {juce::Colour (60, 60, 60)};
     juce::Colour orange {juce::Colour (225, 145, 10)};
     juce::Colour blue {juce::Colour (80, 125, 185)};

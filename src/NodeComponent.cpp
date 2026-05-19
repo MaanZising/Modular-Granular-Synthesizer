@@ -49,6 +49,32 @@ NodeComponent::NodeComponent(const juce::String& name, int numInputs, int numOut
         };
     }
 
+    // create number box
+    if (nodeName == "Number Box")
+    {
+        valueSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+        valueSlider.setTextBoxStyle(juce::Slider::TextBoxAbove, false, 80, 22);
+        valueSlider.setRange(-20000.0f, 20000.0f, 0.001f);
+        valueSlider.setValue(0.0f, juce::dontSendNotification);
+        valueSlider.setMouseDragSensitivity(40000);
+
+        valueSlider.setColour(juce::Slider::textBoxBackgroundColourId, midGrey);
+        valueSlider.setColour(juce::Slider::textBoxOutlineColourId, darkGrey);
+        valueSlider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::black);
+        valueSlider.setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::transparentBlack);
+        valueSlider.setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::transparentBlack);
+        
+        addAndMakeVisible(valueSlider);
+
+        valueSlider.onValueChange = [this]()
+        {
+            if (onNumberValueChanged)
+            {
+                onNumberValueChanged((float)valueSlider.getValue());
+            }
+        };
+    }
+
     if (nodeName == "Granulator")
         offsetY = -25;
 }
@@ -68,7 +94,6 @@ void NodeComponent::resized()
     // wave selector
     if (nodeName == "Oscillator")
     {
-        // Adjust width (e.g., 100) and height (e.g., 20) to fit your Node bounds
         int comboWidth = 100;
         int comboHeight = 20;
         waveSelector.setBounds
@@ -77,6 +102,18 @@ void NodeComponent::resized()
             (getHeight() - comboHeight) / 2, 
             comboWidth, 
             comboHeight
+        );
+    }
+
+    // number box
+    if (nodeName == "Number Box")
+    {
+        valueSlider.setBounds
+        (
+            20,
+            -1, 
+            70, 
+            40
         );
     }
 }

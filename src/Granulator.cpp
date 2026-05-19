@@ -111,6 +111,7 @@ void GranulatorProcessor::triggerGrainBuffer (int channel, juce::AudioBuffer<flo
 
         // interval, channel 5, (0.001, inf)
         interval = buffer.getReadPointer(5)[sample];
+        interval = interval * 0.5; //????????
         if (interval < 0.001)
             interval = 0.001;
         interval = interval * sampleRate;

@@ -9,18 +9,18 @@ NumberBox::NumberBox()
 {
 }
 
-void NumberBox::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-}
-
 void NumberBox::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
     juce::ignoreUnused (midiMessages);
-
     juce::ScopedNoDenormals noDenormals;
     
     buffer.clear();
+
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+    {
+        buffer.getWritePointer(0)[sample] = value;
+    }
 }
 
 const juce::String NumberBox::getName() const

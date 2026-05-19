@@ -11,10 +11,6 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (ModularGranula
     setSize (800, 600);
     setResizable (true, true);
 
-    // initial nodes
-    //addNode ("Node A", 1, 2, juce::Rectangle<int>(50, 50, 80, 50));
-    //addNode ("Node B", 2, 1, juce::Rectangle<int>(300, 150, 80, 50));
-
     // load graph from processor state
     auto graph = processorRef.graphState;
 
@@ -44,6 +40,13 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (ModularGranula
             int savedType = nodeTree.getProperty("waveType", 0);
             // JUCE ComboBox indices are 1-based, your processor types are 0-based
             node->setWaveTypeComboBoxId(savedType + 1); 
+        }
+
+        // restore value for number box
+        if (nodeTree["name"].toString() == "Number Box")
+        {
+            float savedValue = nodeTree.getProperty("numericValue", 0.0f);
+            node->setNumberBoxValue(savedValue);
         }
 
         nodes.add(node);
@@ -118,7 +121,9 @@ void AudioPluginAudioProcessorEditor::resized()
 
 void AudioPluginAudioProcessorEditor::removeConnection (ConnectorComponent* p)
 {
-    // remove from local vector
+    if (p == nullptr) return;
+
+    // remove from local vector (GUI)
     connections.erase
     (
         std::remove_if
@@ -137,17 +142,36 @@ void AudioPluginAudioProcessorEditor::removeConnection (ConnectorComponent* p)
         connections.end()
     );
 
-    // remove from processor state
+    // remove from processor state (audio)
+    const auto nodeId = p->getParentNode()->getUniqueId();
+    const int portIndex = p->getIndex();
+    const bool isOutput = (p->getType() == ConnectorType::Output);
+
     for (int i = processorRef.graphState.getNumChildren(); --i >= 0;)
     {
         auto child = processorRef.graphState.getChild(i);
         if (child.hasType("Connection"))
         {
-            if ((juce::int64)child["sourceId"] == p->getParentNode()->getUniqueId() ||
-                (juce::int64)child["destId"] == p->getParentNode()->getUniqueId())
+            bool matchFound = false;
+
+            if (isOutput)
+            {
+                if ((juce::int64)child["sourceId"] == nodeId && (int)child["sourcePort"] == portIndex)
+                {
+                    matchFound = true;
+                }
+            }
+            else
+            {
+                if ((juce::int64)child["destId"] == nodeId && (int)child["destPort"] == portIndex)
+                {
+                    matchFound = true;
+                }
+            }
+
+            if (matchFound)
             {
                 processorRef.graphState.removeChild(i, nullptr);
-                break;
             }
         }
     }
@@ -279,7 +303,7 @@ void AudioPluginAudioProcessorEditor::mouseDown (const juce::MouseEvent& e)
                         addNode ("Oscillator", 1, 1, juce::Rectangle<int>(pos.x, pos.y, 160, 35));
                         break;
                     case 5:
-                        addNode ("Number Box", 0, 1, juce::Rectangle<int>(pos.x, pos.y, 60, 35));
+                        addNode ("Number Box", 0, 1, juce::Rectangle<int>(pos.x, pos.y, 100, 20));
                         break;
                     }
                 }
@@ -377,7 +401,7 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
     // wave type selection
     node->onWaveTypeChanged = [this, node](int zeroBasedWaveType)
     {
-        // 1. Update the ValueTree so it saves/restores
+        // update value tree
         for (int i = 0; i < processorRef.graphState.getNumChildren(); ++i)
         {
             auto child = processorRef.graphState.getChild(i);
@@ -388,13 +412,38 @@ void AudioPluginAudioProcessorEditor::hookUpNode (NodeComponent* node)
             }
         }
 
-        // 2. Push the change directly to the audio engine processor instantly
+        // set wave type
         auto graphId = processorRef.getGraphIdForGuiId(node->getUniqueId());
         if (auto* graphNode = processorRef.mainProcessor->getNodeForId(graphId))
         {
             if (auto* oscProc = dynamic_cast<OscillatorProcessor*>(graphNode->getProcessor()))
             {
                 oscProc->setWaveType(zeroBasedWaveType);
+            }
+        }
+    };
+
+    // number box value management
+    node->onNumberValueChanged = [this, node](float newValue)
+    {
+        // update value tree
+        for (int i = 0; i < processorRef.graphState.getNumChildren(); ++i)
+        {
+            auto child = processorRef.graphState.getChild(i);
+            if (child.hasType("Node") && (juce::int64)child["id"] == node->getUniqueId())
+            {
+                child.setProperty("numericValue", newValue, nullptr);
+                break;
+            }
+        }
+
+        // set value
+        auto graphId = processorRef.getGraphIdForGuiId(node->getUniqueId());
+        if (auto* graphNode = processorRef.mainProcessor->getNodeForId(graphId))
+        {
+            if (auto* numBoxProc = dynamic_cast<NumberBox*>(graphNode->getProcessor()))
+            {
+                numBoxProc->value = newValue;
             }
         }
     };

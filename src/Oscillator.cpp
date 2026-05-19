@@ -63,14 +63,15 @@ void OscillatorProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         freq = buffer.getReadPointer(0)[sample];
         if (freq < 0.0f) freq = 0.0f;
         osc.setFrequency (freq);
+        buffer.getWritePointer(0)[sample] = osc.processSample (0.0f);
     }
 
-    juce::dsp::AudioBlock<float> block (buffer);
-    juce::dsp::ProcessContextReplacing<float> context (block);
-    osc.process (context);
+    //juce::dsp::AudioBlock<float> block (buffer);
+    //juce::dsp::ProcessContextReplacing<float> context (block);
+    //osc.process (context);
 }
 
 const juce::String OscillatorProcessor::getName() const
 {
-    return "Oscillator";;
+    return "Oscillator";
 }
