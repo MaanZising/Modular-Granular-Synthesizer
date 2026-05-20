@@ -62,7 +62,7 @@ void OscillatorProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     {
         freq = buffer.getReadPointer(0)[sample];
         if (freq < 0.0f) freq = 0.0f;
-        osc.setFrequency (freq);
+        osc.setFrequency (freq, true);
         buffer.getWritePointer(0)[sample] = osc.processSample (0.0f);
     }
 
