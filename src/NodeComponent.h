@@ -12,63 +12,18 @@ public:
     NodeComponent(const juce::String& name, int numInputs, int numOutputs);
 
     void resized() override;
-
     void paint(juce::Graphics& g) override;
 
-    void mouseDown(const juce::MouseEvent& e) override
-    {
-        if (e.mods.isRightButtonDown())
-        {
-            juce::PopupMenu menu;
-            menu.addItem(1, "Delete Node");
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
 
-            menu.showMenuAsync(juce::PopupMenu::Options(),
-                [this](int result)
-                {
-                    if (result == 0)
-                        return; // user cancelled, do nothing
-                    if (onContextMenu)
-                        onContextMenu(this);
-                });
-            return;
-        }
-        // only start dragging if not clicking on a connector
-        if (!isClickOnConnector(e))
-            dragger.startDraggingComponent(this, e);
-    }
+    ConnectorComponent* getInputPort(int index);
+    ConnectorComponent* getOutputPort(int index);
 
-    void mouseDrag(const juce::MouseEvent& e) override
-    {
-        if (!isClickOnConnector(e))
-        {
-            dragger.dragComponent(this, e, nullptr);
-            if (onMoved) onMoved(); // notify parent to repaint connections
-        }
-    }
-
-    ConnectorComponent* getInputPort(int index)
-    {
-        return (index >= 0 && index < inputs.size()) ? inputs[index] : nullptr;
-    }
-
-    ConnectorComponent* getOutputPort(int index)
-    {
-        return (index >= 0 && index < outputs.size()) ? outputs[index] : nullptr;
-    }
-
-    void setWaveTypeComboBoxId(int id)
-    {
-        waveSelector.setSelectedId(id, juce::dontSendNotification);
-    }
-
-    void setNumberBoxValue(float value)
-    {
-        valueSlider.setValue(value, juce::dontSendNotification);
-    }
-
-    juce::int64 getUniqueId() const { return uniqueId; }
-
-    void setUniqueId(juce::int64 id) { uniqueId = id; }
+    void setWaveTypeComboBoxId(int id);
+    void setNumberBoxValue(float value);
+    juce::int64 getUniqueId() const;
+    void setUniqueId(juce::int64 id);
 
     juce::OwnedArray<ConnectorComponent> inputs;
     juce::OwnedArray<ConnectorComponent> outputs;
@@ -93,12 +48,5 @@ private:
     int offsetX { 0 };
     int offsetY { 0 };
 
-    bool isClickOnConnector(const juce::MouseEvent& e)
-    {
-        for (auto* port : inputs)
-            if (port->getBounds().contains(e.getPosition())) return true;
-        for (auto* port : outputs)
-            if (port->getBounds().contains(e.getPosition())) return true;
-        return false;
-    }
+    bool isClickOnConnector(const juce::MouseEvent& e);
 };

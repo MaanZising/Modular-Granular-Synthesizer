@@ -185,7 +185,12 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
     return new ModularGranularSynthesizer();
 }
 
+//////////
 
+juce::int64 ModularGranularSynthesizer::generateNodeId()
+{
+    return nextNodeId++;
+}
 
 
 

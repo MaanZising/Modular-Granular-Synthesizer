@@ -194,3 +194,73 @@ void NodeComponent::paint(juce::Graphics& g)
     g.setFont (15.0f);
     g.drawText (nodeNameText, offsetX, offsetY, getLocalBounds().getWidth(), getLocalBounds().getHeight(), juce::Justification::centred);
 }
+
+void NodeComponent::mouseDown(const juce::MouseEvent& e)
+{
+    if (e.mods.isRightButtonDown())
+    {
+        juce::PopupMenu menu;
+        menu.addItem(1, "Delete Node");
+
+        menu.showMenuAsync(juce::PopupMenu::Options(),
+            [this](int result)
+            {
+                if (result == 0)
+                    return; // user cancelled, do nothing
+                if (onContextMenu)
+                    onContextMenu(this);
+            });
+        return;
+    }
+    // only start dragging if not clicking on a connector
+    if (!isClickOnConnector(e))
+        dragger.startDraggingComponent(this, e);
+}
+
+void NodeComponent::mouseDrag(const juce::MouseEvent& e)
+{
+    if (!isClickOnConnector(e))
+    {
+        dragger.dragComponent(this, e, nullptr);
+        if (onMoved) onMoved(); // notify parent to repaint connections
+    }
+}
+
+ConnectorComponent* NodeComponent::getInputPort(int index)
+{
+    return (index >= 0 && index < inputs.size()) ? inputs[index] : nullptr;
+}
+
+ConnectorComponent* NodeComponent::getOutputPort(int index)
+{
+    return (index >= 0 && index < outputs.size()) ? outputs[index] : nullptr;
+}
+
+void NodeComponent::setWaveTypeComboBoxId(int id)
+{
+    waveSelector.setSelectedId(id, juce::dontSendNotification);
+}
+
+void NodeComponent::setNumberBoxValue(float value)
+{
+    valueSlider.setValue(value, juce::dontSendNotification);
+}
+
+juce::int64 NodeComponent::getUniqueId() const
+{
+    return uniqueId;
+}
+
+void NodeComponent::setUniqueId(juce::int64 id)
+{
+    uniqueId = id;
+}
+
+bool NodeComponent::isClickOnConnector(const juce::MouseEvent& e)
+{
+    for (auto* port : inputs)
+        if (port->getBounds().contains(e.getPosition())) return true;
+    for (auto* port : outputs)
+        if (port->getBounds().contains(e.getPosition())) return true;
+    return false;
+}

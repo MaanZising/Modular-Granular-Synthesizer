@@ -58,10 +58,7 @@ public:
     //==============================================================================
     juce::ValueTree graphState { "Graph" };
     juce::int64 nextNodeId { 1 }; // start IDs at 1
-    juce::int64 generateNodeId()
-    {
-        return nextNodeId++;
-    }
+    juce::int64 generateNodeId();
     juce::AudioProcessorGraph::NodeID getGraphIdForGuiId(juce::int64 guiId);
 
     void valueTreeChildAdded (juce::ValueTree& parentTree, juce::ValueTree& childWhichHasBeenAdded) override;

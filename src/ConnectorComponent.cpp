@@ -14,3 +14,40 @@ void ConnectorComponent::paint(juce::Graphics& g)
     g.fillEllipse (getLocalBounds().toFloat());
     g.fillRoundedRectangle (getLocalBounds().toFloat(), 5.0f);
 }
+
+void ConnectorComponent::mouseDown(const juce::MouseEvent& e)
+{
+    if (e.mods.isRightButtonDown())
+    {
+        if (onRightClick) onRightClick(this);
+    }
+    else
+    {
+        if (onStartDrag) onStartDrag(this, e);
+    }
+}
+
+void ConnectorComponent::mouseDrag(const juce::MouseEvent& e)
+{
+    if (onDrag) onDrag(this, e);
+}
+
+void ConnectorComponent::mouseUp(const juce::MouseEvent& e)
+{
+    if (onFinishDrag) onFinishDrag(this, e);
+}
+
+NodeComponent* ConnectorComponent::getParentNode() const
+{
+    return parentNode;
+}
+
+int ConnectorComponent::getIndex() const
+{
+    return index;
+}
+
+ConnectorType ConnectorComponent::getType() const
+{
+    return connectorType;
+}

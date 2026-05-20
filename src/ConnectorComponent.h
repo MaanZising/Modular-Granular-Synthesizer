@@ -13,31 +13,13 @@ public:
 
     void paint(juce::Graphics& g) override;
 
-    void mouseDown(const juce::MouseEvent& e) override
-    {
-        if (e.mods.isRightButtonDown())
-        {
-            if (onRightClick) onRightClick(this);
-        }
-        else
-        {
-            if (onStartDrag) onStartDrag(this, e);
-        }
-    }
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
 
-    void mouseDrag(const juce::MouseEvent& e) override
-    {
-        if (onDrag) onDrag(this, e);
-    }
-
-    void mouseUp(const juce::MouseEvent& e) override
-    {
-        if (onFinishDrag) onFinishDrag(this, e);
-    }
-
-    NodeComponent* getParentNode() const { return parentNode; }
-    int getIndex() const { return index; }
-    ConnectorType getType() const { return connectorType; }
+    NodeComponent* getParentNode() const;
+    int getIndex() const;
+    ConnectorType getType() const;
 
     std::function<void (ConnectorComponent*, const juce::MouseEvent&)> onStartDrag;
     std::function<void (ConnectorComponent*, const juce::MouseEvent&)> onDrag;
